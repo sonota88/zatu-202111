@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>SQL Reader v3</title>
+    <meta charset="utf-8" />
+
+    <script src="../lib/jquery.js"></script>
+    <script src="../lib/underscore.js"></script>
+
+    <script src="tree_builder.js"></script>
+    <script src="app.js"></script>
+
+    <style>
+@font-face {
+  font-family: vlgothic;
+  src: url("z_VLGothic/VL-Gothic-Regular.woff");
+}
+
+* {
+     font-family: vlgothic, monospace;
+     /font-family: "Ubuntu Mono";
+     box-sizing: border-box;
+ }
+
+     #input {
+       width: 45%;
+       height: 10rem;
+     }     
+     .preview {
+       line-height: 120%;
+       min-width: 45%;
+       min-height: 4rem;
+       background: #333;
+       color: #ccc;
+       padding: 0.5rem;
+       white-space: pre;
+     }
+
+.span {
+  /border-left: solid 1px #800;
+}
+
+     .block {
+       /margin-left: 2rem;
+       padding: 0.1rem;
+       display: inline;
+       border-radius: 0.2rem;
+       box-shadow: 0 0 0.1rem rgba(80,80,80,1) inset;
+     }
+     .block_multi {
+       display: block;
+       margin: 0.3rem;
+       margin-left: 2rem;
+       padding: 0.3rem;
+display: flex;
+     }
+     .block_0 {
+       margin-left: 0;
+       /display: inline;
+     }
+.button_outer {
+  margin-right: 0.5rem;
+  padding-right: 0.2rem;
+  border: dashed #444;
+  border-width: 0 0.1rem 0 0;
+}
+
+     .block_0
+     ,.block_2
+     ,.block_4
+     { background: #333; }
+     .block_1
+     ,.block_3
+     { background: #2e2e2e; }
+
+     .folded { display: none; }
+
+     .fold { width: 1rem; height: 1rem;
+       padding: 0;
+     }
+
+.paren { color: #8ef; }
+.symbol { color: #eee; }
+.nl { color: #555; }
+
+     .matched_1 { color: #f0a; }
+     .matched_2 { color: #4df; }
+     .matched_3 { color: #af0; }
+     .matched_4 { color: #8ff; }
+     .matched_5 { color: #f8f; }
+     .matched_6 { color: #ff8; }
+     .matched_7 { color: #c00; }
+     .matched_8 { color: #0a0; }
+     .matched_9 { color: #0af; }
+     .matched_10 { color: #c80; }
+     .matched_11 { color: #088; }
+     .matched_12 { color: #a0e; }
+
+     .comment { color: #777; }
+     .quote { background: #404038;
+       border-radius: 0.3rem;
+     }
+
+     button {
+       border: solid 0.1rem #555;
+       background: #333;
+       color: #ccc;
+       border-radius: 0.1rem;
+     }
+
+     .selected {
+       border: solid #f04;
+       border-width: 0 0 0.15rem 0;
+     }
+    </style>
+    <link rel="stylesheet" href="customize.css" type="text/css" />
+  </head>
+
+<body>
+
+<textarea id="data_keywords" style="display: none;"></textarea>
+
+  <textarea id="hl_tgts">
+select from where
+</textarea>
+<button id="auto">auto</button>
+<button id="keyword">keyword</button>
+<button id="indent">indent</button>
+<button id="dedent">dedent</button>
+
+<a href="test.html">test</a>
+<a href="app.html?debug=1">debug</a>
+
+<br />
+  <textarea id="input">
+select *
+from ab..cd
+  inner join ${val}.hoge
+  inner join ${val}..hoge
+where ef <= ${val}
+</textarea>
+  <div class="preview" id="preview_0"></div>
+  <div class="preview" id="preview_1"></div>
+  <div class="preview" id="preview_2"></div>
+  <div class="preview" id="preview_3"></div>
+  <div class="preview" id="preview_4"></div>
+  <div class="preview" id="preview_5"></div>
+
+  <textarea>
+select *
+from ab..cd
+  inner join ${val}.hoge
+  inner join ${val}..hoge
+where ef <= ${val}
+
+gh -- ab"cd"ef
+gh -- ab'cd'ef
+gh -- ab`cd`ef
+
+gh /* ab"cd"ef */ ij
+gh /* ab'cd'ef */ ij
+gh /* ab`cd`ef */ ij
+
+ab'cd-- efgh'ij
+ab'cd/*ef*/gh'ij
+ab"cd-- efgh"ij
+ab"cd/*ef*/gh"ij
+ab`cd-- efgh`ij
+ab`cd/*ef*/gh`ij
+
+-- http://omachizura.com/sql/%E5%89%AF%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B%E3%82%92%E7%90%86%E8%A7%A3%E3%81%99%E3%82%8B.html
+SELECT MAX(T1.社員名) AS 社員名
+  ,SUM(T2.売上金額) AS 確定売上金額
+  ,SUM(T3.売上金額) AS 未確定売上金額
+FROM 社員マスタ AS T1
+  LEFT JOIN
+  (
+    SELECT *
+    FROM 売上明細 S1
+    WHERE 状態区分 = 0
+  ) T2
+  ON T1.社員コード = T2.社員コード
+  LEFT JOIN
+  (
+    SELECT *
+    FROM 売上明細 S1
+    WHERE 状態区分 = 1
+  ) T3
+  ON T1.社員コード = T3.社員コード
+GROUP BY T1.社員コード
+;
+
+-- ----
+
+/*
+分析SQLのコーディングスタイル - クックパッド開発者ブログ
+http://techlife.cookpad.com/entry/2016/11/09/000033
+
+複雑なSQLをデチューンしてみよう - SQLer 生島勘富 の日記
+http://d.hatena.ne.jp/Sikushima/20100616/1276680064
+
+複雑なSQLも怖くない
+http://crudexplorer.ks-serv.com/case_020.html
+*/
+-- ----
+
+/*
+  fdsa
+  fdsa
+*/
+select
+  t2.a, xt2, t2x
+  ,max(t2.b)
+  ,sum(if(t4.b is null, 0, 1))
+  ,${arg1}
+  ,now()
+from (
+  select * from ${table1} t1 -- fdsa
+  where price < /*price*/123
+    and name like 'hoge%'
+) t2
+join(
+  /* ... */
+  select * from (
+    select * from t5
+    where (a = b)
+      and (
+        (c = d)
+        or (e = f)
+      )
+  ) t3
+) t4
+group by t2.a
+;
+
+select
+  ''
+  ,'ab'
+  ,'ab--cd'
+  ,'ab/*cd*/ef'
+fd(aa)dd /*
+  fdsa
+fdsae
+*/ f ab d(a ab
+ ef ij a)dd
+  -- jpge
+fd(aa)dd
+
+----
+
+t2.a
+a t2
+a(
+  select
+
+    a
+)b
+
+-- tab
+
+join(
+	/* ... */
+	select * from (
+		select * from t5
+		where (a = b)
+		  and (
+			  (c = d)
+			  or (e = f)
+		  )
+	) t3
+) t4
+
+
+  </textarea>
+
+  <style>
+   .dump_s { background: #aff; }
+  </style>
+  <div id="dump"></div>
+
+</body>
+</html>
+
+
